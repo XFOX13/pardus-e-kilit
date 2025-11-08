@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QFrame
+    QLabel, QLineEdit, QPushButton, QFrame, QMessageBox
 )
 from PyQt5.QtGui import QPixmap, QFont, QPainter, QColor
 from PyQt5.QtCore import Qt, QTimer, QTime
@@ -12,10 +12,10 @@ class PardusEKilit(QWidget):
         self.setWindowTitle("PARDUS E-Kilit")
         self.setGeometry(100, 100, 420, 740)
         self.initUI()
-        self.restart_interval = 40 * 60  # 40 dakika, saniye cinsinden
+        self.restart_interval = 40 * 60  # 40 minutes in seconds
 
     def paintEvent(self, event):
-        # Arka plan gradient'i çiz
+        # Draw background gradient
         painter = QPainter(self)
         gradient = painter.linearGradient(0, 0, self.width(), self.height())
         gradient.setColorAt(0, QColor("#114151"))
@@ -28,7 +28,7 @@ class PardusEKilit(QWidget):
         layout.setContentsMargins(30,40,30,40)
         layout.setSpacing(32)
 
-        # Pardus logo (örnek: pardus_logo.png)
+        # Pardus logo
         logo_label = QLabel()
         logo_pixmap = QPixmap("pardus_logo.png")
         if not logo_pixmap.isNull():
@@ -37,7 +37,7 @@ class PardusEKilit(QWidget):
         logo_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(logo_label)
 
-        # Başlıklar
+        # Headings
         pardus_label = QLabel("PARDUS")
         pardus_label.setFont(QFont("Arial", 32, QFont.Bold))
         pardus_label.setStyleSheet("color: #fff; margin-top:10px;")
@@ -50,7 +50,7 @@ class PardusEKilit(QWidget):
         ekilit_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(ekilit_label)
 
-        # 6 Haneli Kod Kutuları
+        # 6 Digit Code Boxes
         code_row = QHBoxLayout()
         self.code_boxes = []
         for _ in range(6):
@@ -66,7 +66,7 @@ class PardusEKilit(QWidget):
         code_widget.setLayout(code_row)
         layout.addWidget(code_widget, alignment=Qt.AlignCenter)
 
-        # QR Kod Görseli
+        # QR Code Image
         qr_label = QLabel()
         qr_pixmap = QPixmap("qrcode.png")
         if not qr_pixmap.isNull():
@@ -75,21 +75,28 @@ class PardusEKilit(QWidget):
         qr_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(qr_label)
 
-        # Butonlar
+        # Buttons: KAPAT, GİR, UNLOCK
         btn_row = QHBoxLayout()
         self.close_btn = QPushButton("KAPAT")
         self.close_btn.setStyleSheet("background:#222; color:#fff; font-size:22px; border-radius:7px; padding:8px 26px; font-weight:bold")
         self.close_btn.clicked.connect(self.close)
+
         self.enter_btn = QPushButton("GİR")
         self.enter_btn.setStyleSheet("background:#222; color:#fff; font-size:22px; border-radius:7px; padding:8px 26px; font-weight:bold")
         self.enter_btn.clicked.connect(self.enter_code)
+
+        self.unlock_btn = QPushButton("UNLOCK")
+        self.unlock_btn.setStyleSheet("background:#198d26; color:#fff; font-size:22px; border-radius:7px; padding:8px 26px; font-weight:bold")
+        self.unlock_btn.clicked.connect(self.emergency_unlock)
+
         btn_row.addWidget(self.close_btn)
         btn_row.addWidget(self.enter_btn)
+        btn_row.addWidget(self.unlock_btn)
         btn_widget = QWidget()
         btn_widget.setLayout(btn_row)
         layout.addWidget(btn_widget, alignment=Qt.AlignCenter)
 
-        # Zamanlayıcı - her 40 dkda bir sıfırlanır/kapatır
+        # Timer: 40 minutes countdown, auto-close
         self.clock_label = QLabel("40:00")
         self.clock_label.setFont(QFont("Arial", 38, QFont.Bold))
         self.clock_label.setStyleSheet("color: #fff; background:transparent; margin-top:26px;")
@@ -102,8 +109,8 @@ class PardusEKilit(QWidget):
         self.seconds_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.seconds_label)
 
-        # Timer
-        self.time_left = QTime(0, 40, 0)  # 40 dakika
+        # Timer setup
+        self.time_left = QTime(0, 40, 0)  # 40 minutes
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_timer)
         self.timer.start(1000)
@@ -114,21 +121,38 @@ class PardusEKilit(QWidget):
         self.time_left = self.time_left.addSecs(-1)
         self.clock_label.setText(self.time_left.toString("mm:ss"))
         self.seconds_label.setText(f"m {self.time_left.second()} s")
-        # Her 40 dakikada bir otomatik kendini kapatsın
+        # Auto-close app when timer ends
         if self.time_left.minute() == 0 and self.time_left.second() == 0:
             self.timer.stop()
-            self.close()  # Uygulama otomatik kapanır
+            self.close()
 
     def enter_code(self):
         code = "".join(box.text() for box in self.code_boxes)
-        # Doğrulama işlevi buraya (örnek kod: 102828)
-        if code == "102828":
+        # Replace with your real code check (or use database)
+        correct_code = "102828"
+        if code == correct_code:
+            QMessageBox.information(self, "Success", "Kilit Açıldı!")
             self.timer.stop()
             self.clock_label.setText("Kilit Açıldı!")
             self.seconds_label.setText("")
         else:
+            QMessageBox.warning(self, "Error", "Yanlış Kod!")
             self.clock_label.setText("Yanlış Kod!")
             self.seconds_label.setText("")
+
+    def emergency_unlock(self):
+        reply = QMessageBox.question(
+            self,
+            "Emergency Unlock",
+            "Are you sure you want to emergency unlock?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            self.timer.stop()
+            self.clock_label.setText("UNLOCKED!")
+            self.seconds_label.setText("")
+            # Optionally, self.close() to exit app
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
